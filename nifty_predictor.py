@@ -50,7 +50,6 @@ KOTAK_CONSUMER_KEY = "YOUR_CONSUMER_KEY"
 KOTAK_CONSUMER_SECRET = "YOUR_CONSUMER_SECRET"
 KOTAK_MOBILE_NUMBER = "YOUR_MOBILE_NUMBER"
 KOTAK_PASSWORD = "YOUR_PASSWORD"
-WHATSAPP_WEBHOOK_URL = "YOUR_WHATSAPP_WEBHOOK_URL"
 NIFTY_SYMBOL = "NIFTY 50"
 NIFTY_TICKER = "^NSEI"
 
@@ -124,17 +123,19 @@ def predict_signal(model, latest_features):
     prediction = model.predict(latest_features)
     return 'BUY' if prediction[0] == 1 else 'SELL'
 
-# --- Notification ---
-def send_whatsapp_notification(message):
-    """Sends a notification to the configured WhatsApp webhook URL."""
-    if WHATSAPP_WEBHOOK_URL == "YOUR_WHATSAPP_WEBHOOK_URL" or not WHATSAPP_WEBHOOK_URL:
-        print(f"INFO: WhatsApp Webhook URL not configured. Skipping notification.")
-        return
-    try:
-        requests.post(WHATSAPP_WEBHOOK_URL, json={'text': message}, timeout=10)
-        print(f"Notification sent: {message}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending WhatsApp notification: {e}")
+# --- Alert Display ---
+def display_signal_alert(signal, live_price, candle_close):
+    """Displays a prominent, formatted alert in the console."""
+    border = "**************************************************"
+    title = f"--- TRADING SIGNAL: {signal.upper()} ---"
+    price_line = f"Live Price: {live_price:.2f}"
+    candle_line = f"Trigger Candle Close: {candle_close:.2f}"
+
+    print("\n" + border)
+    print(title.center(len(border)))
+    print(price_line.center(len(border)))
+    print(candle_line.center(len(border)))
+    print(border + "\n")
 
 # --- Main Script ---
 if __name__ == "__main__":
@@ -187,14 +188,13 @@ if __name__ == "__main__":
 
                 # Generate signal
                 signal = predict_signal(model, latest_features_for_prediction)
-                print(f"Model generated signal: {signal}")
 
-                # Fetch live price from Kotak API for notification
+                # Fetch live price from Kotak API for the alert
                 quote_resp = client.quotes(instrument_tokens=[{'instrument_token': str(nifty_token), 'exchange_segment': 'ind_nifty'}], quote_type='ltp')
                 live_ltp = float(quote_resp['message'][0]['last_traded_price'])
 
-                message = f"Nifty 50 Signal: {signal} (Live Price: {live_ltp:.2f}, Candle Close: {latest_bar['close'].iloc[0]:.2f})"
-                send_whatsapp_notification(message)
+                # Display the pop-up style alert in the console
+                display_signal_alert(signal, live_ltp, latest_bar['close'].iloc[0])
 
             else:
                 print("No new candle data from yfinance yet. Waiting for next cycle.")
