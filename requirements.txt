@@ -2,5 +2,4 @@ pandas
 numpy
 lightgbm
 requests
-talib-binary
 git+https://github.com/Kotak-Neo/kotak-neo-api.git#egg=neo_api_client

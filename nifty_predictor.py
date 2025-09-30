@@ -1,14 +1,9 @@
-# Nifty 50 Futures Predictor using Kotak Neo API and LightGBM (v6 - Futures-Based Bot)
+# Nifty 50 Futures Predictor using Kotak Neo API and LightGBM (v7 - No TA-Lib)
 #
 # --- How to Run in Google Colab ---
 # 1. Upload this script (`nifty_predictor.py`) and `requirements.txt` to your Colab environment.
-# 2. In a new Colab notebook, run the installation commands (this may take a minute):
-#    !wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && tar -xzvf ta-lib-0.4.0-src.tar.gz
-#    %cd ta-lib/
-#    !./configure --prefix=/usr && make && make install
-#    !pip install --upgrade pip -q
-#    !pip install -r ../requirements.txt -q
-#    %cd ..
+# 2. In a new Colab notebook, run the installation command:
+#    !pip install -r requirements.txt
 #
 # --- IMPORTANT: TWO-MODE OPERATION FOR NIFTY 50 FUTURES ---
 #
@@ -38,7 +33,6 @@ import numpy as np
 import lightgbm as lgb
 import requests
 from neo_api_client import NeoAPI
-import talib
 import os
 import threading
 import argparse
@@ -97,10 +91,23 @@ def load_candles_from_csv():
     return df
 
 # --- Model & Prediction ---
+def calculate_sma(data, window):
+    """Calculates the Simple Moving Average using pandas."""
+    return data['close'].rolling(window=window).mean()
+
+def calculate_rsi(data, window=14):
+    """Calculates the Relative Strength Index using pandas."""
+    delta = data['close'].diff()
+    gain = (delta.where(delta > 0, 0)).ewm(alpha=1/window, adjust=False).mean()
+    loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/window, adjust=False).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def create_features(data):
-    data['rsi'] = talib.RSI(data['close'])
-    data['sma_fast'] = talib.SMA(data['close'], timeperiod=10)
-    data['sma_slow'] = talib.SMA(data['close'], timeperiod=30)
+    data['rsi'] = calculate_rsi(data)
+    data['sma_fast'] = calculate_sma(data, window=10)
+    data['sma_slow'] = calculate_sma(data, window=30)
     return data
 
 def train_model(data):
